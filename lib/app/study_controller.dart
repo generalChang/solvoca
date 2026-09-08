@@ -17,6 +17,15 @@ class StudyController extends ChangeNotifier {
 
   List<Card> listCards(String listId) => _study.listCards(listId);
 
+  void addCard({
+    required String listId,
+    required String front,
+    required String back,
+  }) {
+    _study.addCard(listId: listId, front: front, back: back);
+    notifyListeners();
+  }
+
   void startOrResumeQueue() {
     _study.startOrResumeQueue();
     _backRevealed = false;
