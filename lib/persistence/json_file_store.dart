@@ -73,6 +73,7 @@ Map<String, dynamic> _encodeQueue(DayQueue queue) {
     'date': queue.date.toIso8601String(),
     'cardIds': queue.cardIds,
     'gradedCardIds': queue.gradedCardIds,
+    'didntKnowCounts': queue.didntKnowCounts,
   };
 }
 
@@ -113,9 +114,13 @@ Card _decodeCard(Map<String, dynamic> json) {
 }
 
 DayQueue _decodeQueue(Map<String, dynamic> json) {
+  final rawCounts = json['didntKnowCounts'] as Map<String, dynamic>?;
   return DayQueue(
     date: DateTime.parse(json['date'] as String),
     cardIds: (json['cardIds'] as List<dynamic>).cast<String>(),
     gradedCardIds: (json['gradedCardIds'] as List<dynamic>).cast<String>(),
+    didntKnowCounts: rawCounts == null
+        ? const {}
+        : rawCounts.map((key, value) => MapEntry(key, value as int)),
   );
 }

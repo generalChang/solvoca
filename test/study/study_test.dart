@@ -20,6 +20,14 @@ void main() {
       study = Study(store: store, clock: clock, random: random);
     });
 
+    Study studyFrom(StoreData data) {
+      return Study(
+        store: MemoryStore()..write(data),
+        clock: clock,
+        random: random,
+      );
+    }
+
     test('seeds five Lists and about two hundred Cards on empty Store', () {
       final lists = study.listLists();
 
@@ -102,7 +110,133 @@ void main() {
       expect(secondView.queuedCardIds, firstDayQueue);
       expect(secondView.remainingUngradedCount, 9);
     });
+
+    test("Didn't know appends the current Card to the end of remaining Queue", () {
+      final localStudy = studyFrom(_twoNewCards());
+
+      localStudy.startOrResumeQueue();
+      final before = localStudy.inspectToday();
+      final currentId = before.currentCardId!;
+      final otherId = before.queuedCardIds.firstWhere((id) => id != currentId);
+
+      localStudy.gradeDidntKnow();
+
+      final after = localStudy.inspectToday();
+      expect(after.currentCardId, otherId);
+      expect(after.queuedCardIds.last, currentId);
+      expect(after.remainingUngradedCount, 2);
+    });
+
+    test("fourth Didn't know the same day does not reinsert; Card stays Learning", () {
+      final localStudy = studyFrom(_oneNewCard());
+
+      localStudy.startOrResumeQueue();
+      final cardId = localStudy.inspectToday().currentCardId!;
+
+      localStudy.gradeDidntKnow();
+      localStudy.gradeDidntKnow();
+      localStudy.gradeDidntKnow();
+
+      expect(localStudy.inspectToday().remainingUngradedCount, 0);
+      expect(localStudy.inspectToday().phase, TodayPhase.dayComplete);
+      expect(_findCard(localStudy, cardId).progress, CardProgress.learning);
+
+      localStudy.gradeDidntKnow();
+
+      expect(localStudy.inspectToday().remainingUngradedCount, 0);
+      expect(_findCard(localStudy, cardId).progress, CardProgress.learning);
+    });
+
+    test("Didn't know sets Streak to zero", () {
+      final localStudy = studyFrom(
+        StoreData(
+          lists: const [StudyList(id: 'list-1', name: '일상')],
+          cards: [
+            Card(
+              id: 'card-a',
+              listId: 'list-1',
+              front: 'hello',
+              back: '안녕',
+              progress: CardProgress.learning,
+              streak: 2,
+              lastKnewDate: DateTime(2026, 9, 7),
+            ),
+          ],
+        ),
+      );
+
+      localStudy.startOrResumeQueue();
+      localStudy.gradeDidntKnow();
+
+      final card = _findCard(localStudy, 'card-a');
+      expect(card.streak, 0);
+      expect(card.progress, CardProgress.learning);
+    });
+
+    test("Day complete is reachable after Didn't know reinserts and the daily cap", () {
+      final localStudy = studyFrom(_twoNewCards());
+
+      localStudy.startOrResumeQueue();
+      final firstId = localStudy.inspectToday().currentCardId!;
+
+      localStudy.gradeDidntKnow();
+      final secondId = localStudy.inspectToday().currentCardId!;
+      expect(secondId, isNot(firstId));
+
+      localStudy.gradeDidntKnow();
+      localStudy.gradeDidntKnow();
+      localStudy.gradeKnew();
+      expect(localStudy.inspectToday().currentCardId, firstId);
+
+      localStudy.gradeDidntKnow();
+
+      final today = localStudy.inspectToday();
+      expect(today.remainingUngradedCount, 0);
+      expect(today.phase, TodayPhase.dayComplete);
+      expect(_findCard(localStudy, firstId).progress, CardProgress.learning);
+      expect(_findCard(localStudy, secondId).progress, CardProgress.learning);
+    });
   });
+}
+
+StoreData _oneNewCard() {
+  return const StoreData(
+    lists: [StudyList(id: 'list-1', name: '일상')],
+    cards: [
+      Card(
+        id: 'card-a',
+        listId: 'list-1',
+        front: 'hello',
+        back: '안녕',
+        progress: CardProgress.cardNew,
+        streak: 0,
+      ),
+    ],
+  );
+}
+
+StoreData _twoNewCards() {
+  return const StoreData(
+    lists: [StudyList(id: 'list-1', name: '일상')],
+    cards: [
+      Card(
+        id: 'card-a',
+        listId: 'list-1',
+        front: 'hello',
+        back: '안녕',
+        progress: CardProgress.cardNew,
+        streak: 0,
+      ),
+      Card(
+        id: 'card-b',
+        listId: 'list-1',
+        front: 'world',
+        back: '세계',
+        progress: CardProgress.cardNew,
+        streak: 0,
+      ),
+    ],
+  );
 }
 
 Card _findCard(Study study, String cardId) {

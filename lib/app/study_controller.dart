@@ -33,6 +33,12 @@ class StudyController extends ChangeNotifier {
     _backRevealed = false;
     notifyListeners();
   }
+
+  void gradeDidntKnow() {
+    _study.gradeDidntKnow();
+    _backRevealed = false;
+    notifyListeners();
+  }
 }
 
 StudyController createStudyController({required Store store}) {

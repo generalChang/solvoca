@@ -21,6 +21,8 @@ class Study {
   final Random _random;
   late StoreData _data;
 
+  static const _didntKnowDailyCap = 3;
+
   void _load() {
     final stored = _store.read();
     if (stored == null || stored.isEmpty) {
@@ -200,31 +202,91 @@ class Study {
     _persist();
   }
 
+  void gradeDidntKnow() {
+    final current = _remainingCurrent();
+    if (current == null) {
+      return;
+    }
+
+    final queue = current.queue;
+    final cardId = current.cardId;
+    final updatedCard = current.card.copyWith(
+      progress: CardProgress.learning,
+      streak: 0,
+    );
+
+    final didntKnowCount = (queue.didntKnowCounts[cardId] ?? 0) + 1;
+    final didntKnowCounts = {
+      ...queue.didntKnowCounts,
+      cardId: didntKnowCount,
+    };
+
+    final DayQueue updatedQueue;
+    if (didntKnowCount >= _didntKnowDailyCap) {
+      updatedQueue = queue.copyWith(
+        gradedCardIds: [...queue.gradedCardIds, cardId],
+        didntKnowCounts: didntKnowCounts,
+      );
+    } else {
+      updatedQueue = queue.copyWith(
+        cardIds: [
+          ...queue.cardIds.where((id) => id != cardId),
+          cardId,
+        ],
+        didntKnowCounts: didntKnowCounts,
+      );
+    }
+
+    _commitGrade(
+      cardId: cardId,
+      updatedCard: updatedCard,
+      updatedQueue: updatedQueue,
+    );
+  }
+
   void gradeKnew() {
+    final current = _remainingCurrent();
+    if (current == null) {
+      return;
+    }
+
+    _commitGrade(
+      cardId: current.cardId,
+      updatedCard: _applyKnewGrade(current.card),
+      updatedQueue: current.queue.copyWith(
+        gradedCardIds: [...current.queue.gradedCardIds, current.cardId],
+      ),
+    );
+  }
+
+  ({DayQueue queue, String cardId, Card card})? _remainingCurrent() {
     final queue = _todayQueue;
     if (queue == null) {
-      return;
+      return null;
     }
 
     final remaining = _remainingCardIds(queue);
     if (remaining.isEmpty) {
-      return;
+      return null;
     }
 
     final cardId = remaining.first;
     final card = _cardById(cardId);
     if (card == null) {
-      return;
+      return null;
     }
 
-    final updatedCard = _applyKnewGrade(card);
+    return (queue: queue, cardId: cardId, card: card);
+  }
+
+  void _commitGrade({
+    required String cardId,
+    required Card updatedCard,
+    required DayQueue updatedQueue,
+  }) {
     final updatedCards = _data.cards
         .map((existing) => existing.id == cardId ? updatedCard : existing)
         .toList();
-
-    final updatedQueue = queue.copyWith(
-      gradedCardIds: [...queue.gradedCardIds, cardId],
-    );
 
     _data = _data.copyWith(
       cards: updatedCards,

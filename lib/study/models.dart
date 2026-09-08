@@ -71,20 +71,24 @@ class DayQueue {
     required this.date,
     required this.cardIds,
     required this.gradedCardIds,
+    this.didntKnowCounts = const {},
   });
 
   final DateTime date;
   final List<String> cardIds;
   final List<String> gradedCardIds;
+  final Map<String, int> didntKnowCounts;
 
   DayQueue copyWith({
     List<String>? cardIds,
     List<String>? gradedCardIds,
+    Map<String, int>? didntKnowCounts,
   }) {
     return DayQueue(
       date: date,
       cardIds: cardIds ?? this.cardIds,
       gradedCardIds: gradedCardIds ?? this.gradedCardIds,
+      didntKnowCounts: didntKnowCounts ?? this.didntKnowCounts,
     );
   }
 }

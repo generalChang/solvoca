@@ -50,6 +50,7 @@ class TodayTab extends StatelessWidget {
         remainingCount: today.remainingUngradedCount,
         onReveal: controller.revealBack,
         onKnew: controller.gradeKnew,
+        onDidntKnow: controller.gradeDidntKnow,
       ),
       TodayPhase.dayComplete => const _DayCompleteView(),
       TodayPhase.cleared => const _ClearedView(),
@@ -94,6 +95,7 @@ class _QueuePlayer extends StatelessWidget {
     required this.remainingCount,
     required this.onReveal,
     required this.onKnew,
+    required this.onDidntKnow,
   });
 
   final String front;
@@ -102,6 +104,7 @@ class _QueuePlayer extends StatelessWidget {
   final int remainingCount;
   final VoidCallback onReveal;
   final VoidCallback onKnew;
+  final VoidCallback onDidntKnow;
 
   @override
   Widget build(BuildContext context) {
@@ -142,9 +145,22 @@ class _QueuePlayer extends StatelessWidget {
             child: const Text('뒷면 보기'),
           )
         else
-          FilledButton(
-            onPressed: onKnew,
-            child: const Text('알았다'),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: onDidntKnow,
+                  child: const Text('몰랐다'),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: FilledButton(
+                  onPressed: onKnew,
+                  child: const Text('알았다'),
+                ),
+              ),
+            ],
           ),
       ],
     );
