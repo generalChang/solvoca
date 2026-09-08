@@ -377,4 +377,42 @@ class Study {
       _data.cards.where((card) => card.listId == listId),
     );
   }
+
+  void addCard({
+    required String listId,
+    required String front,
+    required String back,
+  }) {
+    if (!_data.lists.any((list) => list.id == listId)) {
+      throw ArgumentError.value(listId, 'listId', 'List not found');
+    }
+
+    final duplicate = _data.cards.any(
+      (card) => card.front == front && card.back == back,
+    );
+    if (duplicate) {
+      throw const DuplicateCardPairException();
+    }
+
+    final id = _nextCardId();
+    final card = Card(
+      id: id,
+      listId: listId,
+      front: front,
+      back: back,
+      progress: CardProgress.cardNew,
+      streak: 0,
+    );
+
+    _data = _data.copyWith(cards: [..._data.cards, card]);
+    _persist();
+  }
+
+  String _nextCardId() {
+    var index = _data.cards.length;
+    while (_cardById('card-$index') != null) {
+      index++;
+    }
+    return 'card-$index';
+  }
 }

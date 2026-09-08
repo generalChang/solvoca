@@ -2,6 +2,10 @@ enum CardProgress { cardNew, learning, mastered }
 
 enum TodayPhase { waiting, inProgress, dayComplete, cleared }
 
+class DuplicateCardPairException implements Exception {
+  const DuplicateCardPairException();
+}
+
 class StudyList {
   const StudyList({required this.id, required this.name});
 

@@ -458,6 +458,71 @@ void main() {
       expect(snapshot.queuedCardIds, isNot(contains('card-a')));
     });
 
+    test('addCard creates New Card in the chosen List', () {
+      final localStudy = studyFrom(_twoNewCards());
+
+      localStudy.addCard(
+        listId: 'list-1',
+        front: 'break a leg',
+        back: '행운을 빌어',
+      );
+
+      final added = localStudy
+          .listCards('list-1')
+          .firstWhere((card) => card.front == 'break a leg');
+      expect(added.back, '행운을 빌어');
+      expect(added.progress, CardProgress.cardNew);
+      expect(added.streak, 0);
+    });
+
+    test('addCard refuses duplicate front and back', () {
+      final localStudy = studyFrom(_twoNewCards());
+
+      expect(
+        () => localStudy.addCard(
+          listId: 'list-1',
+          front: 'hello',
+          back: '안녕',
+        ),
+        throwsA(isA<DuplicateCardPairException>()),
+      );
+    });
+
+    test('addCard accepts same front with different back', () {
+      final localStudy = studyFrom(_twoNewCards());
+
+      localStudy.addCard(
+        listId: 'list-1',
+        front: 'hello',
+        back: '여보세요',
+      );
+
+      final helloCards =
+          localStudy.listCards('list-1').where((card) => card.front == 'hello');
+      expect(helloCards.length, 2);
+      expect(helloCards.map((card) => card.back).toSet(), {'안녕', '여보세요'});
+    });
+
+    test('addCard after today Queue is built does not insert into Queue', () {
+      final localStudy = studyFrom(_twoNewCards());
+      final queueBefore = localStudy.inspectToday().queuedCardIds;
+
+      localStudy.addCard(
+        listId: 'list-1',
+        front: 'break a leg',
+        back: '행운을 빌어',
+      );
+
+      final addedId = localStudy
+          .listCards('list-1')
+          .firstWhere((card) => card.front == 'break a leg')
+          .id;
+      final queueAfter = localStudy.inspectToday().queuedCardIds;
+
+      expect(queueAfter, queueBefore);
+      expect(queueAfter, isNot(contains(addedId)));
+    });
+
     test('inspectToday reports Mastered count', () {
       final memoryStore = MemoryStore()..write(
         StoreData(
