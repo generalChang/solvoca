@@ -328,6 +328,170 @@ void main() {
       expect(_findCard(localStudy, firstId).progress, CardProgress.learning);
       expect(_findCard(localStudy, secondId).progress, CardProgress.learning);
     });
+
+    test('reopening same day after Day complete stays Day complete', () {
+      final memoryStore = MemoryStore()..write(_oneNewCard());
+      final localStudy = Study(
+        store: memoryStore,
+        clock: clock,
+        random: random,
+      );
+
+      localStudy.startOrResumeQueue();
+      localStudy.gradeKnew();
+
+      expect(localStudy.inspectToday().phase, TodayPhase.dayComplete);
+
+      final reopened = Study(
+        store: memoryStore,
+        clock: clock,
+        random: Random(99),
+      );
+      expect(reopened.inspectToday().phase, TodayPhase.dayComplete);
+      expect(reopened.inspectToday().remainingUngradedCount, 0);
+
+      reopened.startOrResumeQueue();
+      expect(reopened.inspectToday().phase, TodayPhase.dayComplete);
+    });
+
+    test('next local date builds a fresh Queue; yesterday pause does not leak', () {
+      final memoryStore = MemoryStore();
+      final dayOne = Study(
+        store: memoryStore,
+        clock: FixedClock(DateTime(2026, 9, 8)),
+        random: Random(42),
+      );
+
+      dayOne.startOrResumeQueue();
+      final dayOneRemainingBeforePause = dayOne.inspectToday().remainingUngradedCount;
+      final dayOneQueue = dayOne.inspectToday().queuedCardIds;
+      dayOne.gradeKnew();
+
+      final paused = Study(
+        store: memoryStore,
+        clock: FixedClock(DateTime(2026, 9, 8)),
+        random: Random(99),
+      );
+      expect(paused.inspectToday().phase, TodayPhase.inProgress);
+      expect(paused.inspectToday().remainingUngradedCount, dayOneRemainingBeforePause - 1);
+
+      final dayTwo = Study(
+        store: memoryStore,
+        clock: FixedClock(DateTime(2026, 9, 9)),
+        random: Random(99),
+      );
+      final snapshot = dayTwo.inspectToday();
+
+      expect(snapshot.phase, TodayPhase.waiting);
+      expect(snapshot.queuedCardIds, isNot(dayOneQueue));
+      expect(snapshot.remainingUngradedCount, 10);
+    });
+
+    test('three consecutive Knew days on a Learning Card makes it Mastered', () {
+      final memoryStore = MemoryStore()..write(_oneNewCard());
+
+      for (final (day, expectedStreak, expectedProgress) in [
+        (8, 1, CardProgress.learning),
+        (9, 2, CardProgress.learning),
+        (10, 3, CardProgress.mastered),
+      ]) {
+        final localStudy = Study(
+          store: memoryStore,
+          clock: FixedClock(DateTime(2026, 9, day)),
+          random: Random(1),
+        );
+        localStudy.startOrResumeQueue();
+        localStudy.gradeKnew();
+
+        final card = _findCard(localStudy, 'card-a');
+        expect(card.streak, expectedStreak);
+        expect(card.progress, expectedProgress);
+      }
+    });
+
+    test('Streak advances only on consecutive local dates', () {
+      final memoryStore = MemoryStore()..write(_oneNewCard());
+
+      var localStudy = Study(
+        store: memoryStore,
+        clock: FixedClock(DateTime(2026, 9, 8)),
+        random: Random(1),
+      );
+      localStudy.startOrResumeQueue();
+      localStudy.gradeKnew();
+      expect(_findCard(localStudy, 'card-a').streak, 1);
+
+      localStudy = Study(
+        store: memoryStore,
+        clock: FixedClock(DateTime(2026, 9, 10)),
+        random: Random(1),
+      );
+      localStudy.startOrResumeQueue();
+      localStudy.gradeKnew();
+
+      final card = _findCard(localStudy, 'card-a');
+      expect(card.streak, 1);
+      expect(card.progress, CardProgress.learning);
+    });
+
+    test('Mastered Card is not in the next default Queue', () {
+      final memoryStore = MemoryStore()..write(_oneNewCard());
+
+      for (final day in [8, 9, 10]) {
+        final localStudy = Study(
+          store: memoryStore,
+          clock: FixedClock(DateTime(2026, 9, day)),
+          random: Random(1),
+        );
+        localStudy.startOrResumeQueue();
+        localStudy.gradeKnew();
+      }
+
+      final dayFour = Study(
+        store: memoryStore,
+        clock: FixedClock(DateTime(2026, 9, 11)),
+        random: Random(1),
+      );
+      final snapshot = dayFour.inspectToday();
+
+      expect(_findCard(dayFour, 'card-a').progress, CardProgress.mastered);
+      expect(snapshot.queuedCardIds, isNot(contains('card-a')));
+    });
+
+    test('inspectToday reports Mastered count', () {
+      final memoryStore = MemoryStore()..write(
+        StoreData(
+          lists: const [StudyList(id: 'list-1', name: '일상')],
+          cards: [
+            Card(
+              id: 'card-a',
+              listId: 'list-1',
+              front: 'hello',
+              back: '안녕',
+              progress: CardProgress.mastered,
+              streak: 3,
+              lastKnewDate: DateTime(2026, 9, 7),
+            ),
+            Card(
+              id: 'card-b',
+              listId: 'list-1',
+              front: 'world',
+              back: '세계',
+              progress: CardProgress.cardNew,
+              streak: 0,
+            ),
+          ],
+        ),
+      );
+
+      final localStudy = Study(
+        store: memoryStore,
+        clock: clock,
+        random: random,
+      );
+
+      expect(localStudy.inspectToday().masteredCount, 1);
+    });
   });
 }
 
