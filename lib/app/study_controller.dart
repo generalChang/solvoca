@@ -26,6 +26,37 @@ class StudyController extends ChangeNotifier {
     notifyListeners();
   }
 
+  void editCard({required String cardId, required String back}) {
+    _study.editCard(cardId: cardId, back: back);
+    notifyListeners();
+  }
+
+  void deleteCard({required String cardId}) {
+    _study.deleteCard(cardId: cardId);
+    notifyListeners();
+  }
+
+  void moveCard({required String cardId, required String listId}) {
+    _study.moveCard(cardId: cardId, listId: listId);
+    notifyListeners();
+  }
+
+  StudyList createList({required String name}) {
+    final list = _study.createList(name: name);
+    notifyListeners();
+    return list;
+  }
+
+  void renameList({required String listId, required String name}) {
+    _study.renameList(listId: listId, name: name);
+    notifyListeners();
+  }
+
+  void deleteList({required String listId}) {
+    _study.deleteList(listId: listId);
+    notifyListeners();
+  }
+
   void startOrResumeQueue() {
     _study.startOrResumeQueue();
     _backRevealed = false;

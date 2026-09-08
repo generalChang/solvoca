@@ -415,4 +415,127 @@ class Study {
     }
     return 'card-$index';
   }
+
+  bool _hasDuplicatePair(String front, String back, {String? exceptCardId}) {
+    return _data.cards.any(
+      (card) =>
+          card.id != exceptCardId &&
+          card.front == front &&
+          card.back == back,
+    );
+  }
+
+  Card _requireCard(String cardId) {
+    final card = _cardById(cardId);
+    if (card == null) {
+      throw ArgumentError.value(cardId, 'cardId', 'Card not found');
+    }
+    return card;
+  }
+
+  void editCard({required String cardId, required String back}) {
+    final card = _requireCard(cardId);
+    if (_hasDuplicatePair(card.front, back, exceptCardId: cardId)) {
+      throw const DuplicateCardPairException();
+    }
+
+    final updated = card.copyWith(back: back);
+    _data = _data.copyWith(
+      cards: _data.cards
+          .map((existing) => existing.id == cardId ? updated : existing)
+          .toList(),
+    );
+    _persist();
+  }
+
+  void deleteCard({required String cardId}) {
+    _requireCard(cardId);
+
+    _data = _data.copyWith(
+      cards: _data.cards.where((card) => card.id != cardId).toList(),
+    );
+    _removeCardFromTodayQueue(cardId);
+    _persist();
+  }
+
+  void moveCard({required String cardId, required String listId}) {
+    final card = _requireCard(cardId);
+    if (!_data.lists.any((list) => list.id == listId)) {
+      throw ArgumentError.value(listId, 'listId', 'List not found');
+    }
+
+    final updated = card.copyWith(listId: listId);
+    _data = _data.copyWith(
+      cards: _data.cards
+          .map((existing) => existing.id == cardId ? updated : existing)
+          .toList(),
+    );
+    _persist();
+  }
+
+  StudyList createList({required String name}) {
+    final id = _nextListId();
+    final list = StudyList(id: id, name: name);
+    _data = _data.copyWith(lists: [..._data.lists, list]);
+    _persist();
+    return list;
+  }
+
+  void renameList({required String listId, required String name}) {
+    if (!_data.lists.any((list) => list.id == listId)) {
+      throw ArgumentError.value(listId, 'listId', 'List not found');
+    }
+
+    _data = _data.copyWith(
+      lists: _data.lists
+          .map((list) => list.id == listId ? StudyList(id: listId, name: name) : list)
+          .toList(),
+    );
+    _persist();
+  }
+
+  void deleteList({required String listId}) {
+    if (_data.lists.length <= 1) {
+      throw const ListDeleteRefusedException();
+    }
+
+    if (!_data.lists.any((list) => list.id == listId)) {
+      throw ArgumentError.value(listId, 'listId', 'List not found');
+    }
+
+    if (_data.cards.any((card) => card.listId == listId)) {
+      throw const ListDeleteRefusedException();
+    }
+
+    _data = _data.copyWith(
+      lists: _data.lists.where((list) => list.id != listId).toList(),
+    );
+    _persist();
+  }
+
+  String _nextListId() {
+    var index = _data.lists.length;
+    while (_data.lists.any((list) => list.id == 'list-$index')) {
+      index++;
+    }
+    return 'list-$index';
+  }
+
+  void _removeCardFromTodayQueue(String cardId) {
+    final queue = _todayQueue;
+    if (queue == null) {
+      return;
+    }
+
+    final updatedQueue = queue.copyWith(
+      cardIds: queue.cardIds.where((id) => id != cardId).toList(),
+      gradedCardIds: queue.gradedCardIds.where((id) => id != cardId).toList(),
+      didntKnowCounts: Map.from(queue.didntKnowCounts)..remove(cardId),
+      clearLastGradeUndo: queue.lastGradeUndo?.cardId == cardId,
+    );
+
+    _data = _data.copyWith(
+      queueByDate: {..._data.queueByDate, _todayKey: updatedQueue},
+    );
+  }
 }

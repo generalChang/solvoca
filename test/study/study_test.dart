@@ -523,6 +523,169 @@ void main() {
       expect(queueAfter, isNot(contains(addedId)));
     });
 
+    test('editCard back keeps identity and progress', () {
+      final localStudy = studyFrom(
+        StoreData(
+          lists: const [StudyList(id: 'list-1', name: '일상')],
+          cards: [
+            Card(
+              id: 'card-a',
+              listId: 'list-1',
+              front: 'hello',
+              back: '안녕',
+              progress: CardProgress.learning,
+              streak: 2,
+              lastKnewDate: DateTime(2026, 9, 7),
+            ),
+          ],
+        ),
+      );
+
+      localStudy.editCard(cardId: 'card-a', back: '여보세요');
+
+      final card = _findCard(localStudy, 'card-a');
+      expect(card.id, 'card-a');
+      expect(card.front, 'hello');
+      expect(card.back, '여보세요');
+      expect(card.progress, CardProgress.learning);
+      expect(card.streak, 2);
+      expect(card.lastKnewDate, DateTime(2026, 9, 7));
+    });
+
+    test('editCard refuses duplicate front and back', () {
+      final localStudy = studyFrom(
+        StoreData(
+          lists: const [StudyList(id: 'list-1', name: '일상')],
+          cards: [
+            Card(
+              id: 'card-a',
+              listId: 'list-1',
+              front: 'hello',
+              back: '안녕',
+              progress: CardProgress.cardNew,
+              streak: 0,
+            ),
+            Card(
+              id: 'card-b',
+              listId: 'list-1',
+              front: 'hello',
+              back: '여보세요',
+              progress: CardProgress.cardNew,
+              streak: 0,
+            ),
+          ],
+        ),
+      );
+
+      expect(
+        () => localStudy.editCard(cardId: 'card-b', back: '안녕'),
+        throwsA(isA<DuplicateCardPairException>()),
+      );
+    });
+
+    test('deleteCard removes Card from remaining Queue', () {
+      final localStudy = studyFrom(_twoNewCards());
+
+      localStudy.startOrResumeQueue();
+      final currentId = localStudy.inspectToday().currentCardId!;
+
+      localStudy.deleteCard(cardId: currentId);
+
+      expect(
+        localStudy.inspectToday().queuedCardIds,
+        isNot(contains(currentId)),
+      );
+      expect(localStudy.inspectToday().remainingUngradedCount, 1);
+      expect(
+        () => _findCard(localStudy, currentId),
+        throwsA(isA<StateError>()),
+      );
+    });
+
+    test('moveCard preserves progress and Streak', () {
+      final localStudy = studyFrom(
+        StoreData(
+          lists: const [
+            StudyList(id: 'list-1', name: '일상'),
+            StudyList(id: 'list-2', name: '사람'),
+          ],
+          cards: [
+            Card(
+              id: 'card-a',
+              listId: 'list-1',
+              front: 'hello',
+              back: '안녕',
+              progress: CardProgress.learning,
+              streak: 2,
+              lastKnewDate: DateTime(2026, 9, 7),
+            ),
+          ],
+        ),
+      );
+
+      localStudy.moveCard(cardId: 'card-a', listId: 'list-2');
+
+      expect(localStudy.listCards('list-1'), isEmpty);
+      final moved = localStudy.listCards('list-2').single;
+      expect(moved.id, 'card-a');
+      expect(moved.progress, CardProgress.learning);
+      expect(moved.streak, 2);
+      expect(moved.lastKnewDate, DateTime(2026, 9, 7));
+    });
+
+    test('createList and renameList', () {
+      final localStudy = studyFrom(_twoNewCards());
+
+      final created = localStudy.createList(name: '새 목록');
+      expect(created.name, '새 목록');
+      expect(localStudy.listLists().map((list) => list.name), contains('새 목록'));
+
+      localStudy.renameList(listId: created.id, name: '바뀐 이름');
+      expect(
+        localStudy.listLists().firstWhere((list) => list.id == created.id).name,
+        '바뀐 이름',
+      );
+    });
+
+    test('deleteList refuses when List has Cards', () {
+      final localStudy = studyFrom(_twoNewCards());
+
+      expect(
+        () => localStudy.deleteList(listId: 'list-1'),
+        throwsA(isA<ListDeleteRefusedException>()),
+      );
+    });
+
+    test('deleteList refuses when List is the only List', () {
+      final localStudy = studyFrom(
+        const StoreData(
+          lists: [StudyList(id: 'list-1', name: '일상')],
+          cards: [],
+        ),
+      );
+
+      expect(
+        () => localStudy.deleteList(listId: 'list-1'),
+        throwsA(isA<ListDeleteRefusedException>()),
+      );
+    });
+
+    test('deleteList succeeds for empty non-last List', () {
+      final localStudy = studyFrom(
+        const StoreData(
+          lists: [
+            StudyList(id: 'list-1', name: '일상'),
+            StudyList(id: 'list-2', name: '사람'),
+          ],
+          cards: [],
+        ),
+      );
+
+      localStudy.deleteList(listId: 'list-2');
+
+      expect(localStudy.listLists().map((list) => list.id), ['list-1']);
+    });
+
     test('inspectToday reports Mastered count', () {
       final memoryStore = MemoryStore()..write(
         StoreData(

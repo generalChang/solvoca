@@ -6,6 +6,10 @@ class DuplicateCardPairException implements Exception {
   const DuplicateCardPairException();
 }
 
+class ListDeleteRefusedException implements Exception {
+  const ListDeleteRefusedException();
+}
+
 class StudyList {
   const StudyList({required this.id, required this.name});
 
@@ -33,6 +37,9 @@ class Card {
   final DateTime? lastKnewDate;
 
   Card copyWith({
+    String? listId,
+    String? front,
+    String? back,
     CardProgress? progress,
     int? streak,
     DateTime? lastKnewDate,
@@ -40,9 +47,9 @@ class Card {
   }) {
     return Card(
       id: id,
-      listId: listId,
-      front: front,
-      back: back,
+      listId: listId ?? this.listId,
+      front: front ?? this.front,
+      back: back ?? this.back,
       progress: progress ?? this.progress,
       streak: streak ?? this.streak,
       lastKnewDate: clearLastKnewDate ? null : (lastKnewDate ?? this.lastKnewDate),
