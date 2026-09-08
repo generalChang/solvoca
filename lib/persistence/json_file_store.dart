@@ -74,6 +74,18 @@ Map<String, dynamic> _encodeQueue(DayQueue queue) {
     'cardIds': queue.cardIds,
     'gradedCardIds': queue.gradedCardIds,
     'didntKnowCounts': queue.didntKnowCounts,
+    if (queue.lastGradeUndo != null)
+      'lastGradeUndo': _encodeUndo(queue.lastGradeUndo!),
+  };
+}
+
+Map<String, dynamic> _encodeUndo(GradeUndoSnapshot undo) {
+  return {
+    'cardId': undo.cardId,
+    'cardBefore': _encodeCard(undo.cardBefore),
+    'cardIds': undo.cardIds,
+    'gradedCardIds': undo.gradedCardIds,
+    'didntKnowCounts': undo.didntKnowCounts,
   };
 }
 
@@ -115,8 +127,23 @@ Card _decodeCard(Map<String, dynamic> json) {
 
 DayQueue _decodeQueue(Map<String, dynamic> json) {
   final rawCounts = json['didntKnowCounts'] as Map<String, dynamic>?;
+  final rawUndo = json['lastGradeUndo'] as Map<String, dynamic>?;
   return DayQueue(
     date: DateTime.parse(json['date'] as String),
+    cardIds: (json['cardIds'] as List<dynamic>).cast<String>(),
+    gradedCardIds: (json['gradedCardIds'] as List<dynamic>).cast<String>(),
+    didntKnowCounts: rawCounts == null
+        ? const {}
+        : rawCounts.map((key, value) => MapEntry(key, value as int)),
+    lastGradeUndo: rawUndo == null ? null : _decodeUndo(rawUndo),
+  );
+}
+
+GradeUndoSnapshot _decodeUndo(Map<String, dynamic> json) {
+  final rawCounts = json['didntKnowCounts'] as Map<String, dynamic>?;
+  return GradeUndoSnapshot(
+    cardId: json['cardId'] as String,
+    cardBefore: _decodeCard(json['cardBefore'] as Map<String, dynamic>),
     cardIds: (json['cardIds'] as List<dynamic>).cast<String>(),
     gradedCardIds: (json['gradedCardIds'] as List<dynamic>).cast<String>(),
     didntKnowCounts: rawCounts == null

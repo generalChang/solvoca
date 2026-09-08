@@ -174,6 +174,7 @@ class Study {
       currentCardId: currentId,
       currentFront: currentFront,
       currentBack: currentBack,
+      canUndoLastGrade: queue.lastGradeUndo != null,
     );
   }
 
@@ -241,6 +242,8 @@ class Study {
       cardId: cardId,
       updatedCard: updatedCard,
       updatedQueue: updatedQueue,
+      cardBefore: current.card,
+      queueBefore: queue,
     );
   }
 
@@ -256,6 +259,8 @@ class Study {
       updatedQueue: current.queue.copyWith(
         gradedCardIds: [...current.queue.gradedCardIds, current.cardId],
       ),
+      cardBefore: current.card,
+      queueBefore: current.queue,
     );
   }
 
@@ -279,18 +284,55 @@ class Study {
     return (queue: queue, cardId: cardId, card: card);
   }
 
+  void undoLastGrade() {
+    final queue = _todayQueue;
+    final undo = queue?.lastGradeUndo;
+    if (queue == null || undo == null) {
+      return;
+    }
+
+    final updatedCards = _data.cards
+        .map((existing) => existing.id == undo.cardId ? undo.cardBefore : existing)
+        .toList();
+
+    final restoredQueue = queue.copyWith(
+      cardIds: undo.cardIds,
+      gradedCardIds: undo.gradedCardIds,
+      didntKnowCounts: undo.didntKnowCounts,
+      clearLastGradeUndo: true,
+    );
+
+    _data = _data.copyWith(
+      cards: updatedCards,
+      queueByDate: {..._data.queueByDate, _todayKey: restoredQueue},
+    );
+    _persist();
+  }
+
   void _commitGrade({
     required String cardId,
     required Card updatedCard,
     required DayQueue updatedQueue,
+    required Card cardBefore,
+    required DayQueue queueBefore,
   }) {
+    final undo = GradeUndoSnapshot(
+      cardId: cardId,
+      cardBefore: cardBefore,
+      cardIds: List<String>.from(queueBefore.cardIds),
+      gradedCardIds: List<String>.from(queueBefore.gradedCardIds),
+      didntKnowCounts: Map<String, int>.from(queueBefore.didntKnowCounts),
+    );
+
+    final queueWithUndo = updatedQueue.copyWith(lastGradeUndo: undo);
+
     final updatedCards = _data.cards
         .map((existing) => existing.id == cardId ? updatedCard : existing)
         .toList();
 
     _data = _data.copyWith(
       cards: updatedCards,
-      queueByDate: {..._data.queueByDate, _todayKey: updatedQueue},
+      queueByDate: {..._data.queueByDate, _todayKey: queueWithUndo},
       startedDates: {..._data.startedDates, _todayKey},
     );
     _persist();

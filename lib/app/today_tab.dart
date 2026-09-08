@@ -48,11 +48,16 @@ class TodayTab extends StatelessWidget {
         back: today.currentBack ?? '',
         backRevealed: controller.backRevealed,
         remainingCount: today.remainingUngradedCount,
+        canUndo: today.canUndoLastGrade,
         onReveal: controller.revealBack,
         onKnew: controller.gradeKnew,
         onDidntKnow: controller.gradeDidntKnow,
+        onUndo: controller.undoLastGrade,
       ),
-      TodayPhase.dayComplete => const _DayCompleteView(),
+      TodayPhase.dayComplete => _DayCompleteView(
+        canUndo: today.canUndoLastGrade,
+        onUndo: controller.undoLastGrade,
+      ),
       TodayPhase.cleared => const _ClearedView(),
     };
   }
@@ -93,18 +98,22 @@ class _QueuePlayer extends StatelessWidget {
     required this.back,
     required this.backRevealed,
     required this.remainingCount,
+    required this.canUndo,
     required this.onReveal,
     required this.onKnew,
     required this.onDidntKnow,
+    required this.onUndo,
   });
 
   final String front;
   final String back;
   final bool backRevealed;
   final int remainingCount;
+  final bool canUndo;
   final VoidCallback onReveal;
   final VoidCallback onKnew;
   final VoidCallback onDidntKnow;
+  final VoidCallback onUndo;
 
   @override
   Widget build(BuildContext context) {
@@ -139,6 +148,14 @@ class _QueuePlayer extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 32),
+        if (canUndo)
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(
+              onPressed: onUndo,
+              child: const Text('마지막 채점 취소'),
+            ),
+          ),
         if (!backRevealed)
           FilledButton(
             onPressed: onReveal,
@@ -168,15 +185,33 @@ class _QueuePlayer extends StatelessWidget {
 }
 
 class _DayCompleteView extends StatelessWidget {
-  const _DayCompleteView();
+  const _DayCompleteView({
+    this.canUndo = false,
+    required this.onUndo,
+  });
+
+  final bool canUndo;
+  final VoidCallback onUndo;
 
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: Text(
-        '오늘 학습을 마쳤어요.',
-        style: Theme.of(context).textTheme.titleLarge,
-        textAlign: TextAlign.center,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            '오늘 학습을 마쳤어요.',
+            style: Theme.of(context).textTheme.titleLarge,
+            textAlign: TextAlign.center,
+          ),
+          if (canUndo) ...[
+            const SizedBox(height: 24),
+            TextButton(
+              onPressed: onUndo,
+              child: const Text('마지막 채점 취소'),
+            ),
+          ],
+        ],
       ),
     );
   }

@@ -39,6 +39,12 @@ class StudyController extends ChangeNotifier {
     _backRevealed = false;
     notifyListeners();
   }
+
+  void undoLastGrade() {
+    _study.undoLastGrade();
+    _backRevealed = false;
+    notifyListeners();
+  }
 }
 
 StudyController createStudyController({required Store store}) {

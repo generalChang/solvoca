@@ -55,6 +55,7 @@ class TodaySnapshot {
     this.currentCardId,
     this.currentFront,
     this.currentBack,
+    this.canUndoLastGrade = false,
   });
 
   final TodayPhase phase;
@@ -64,6 +65,23 @@ class TodaySnapshot {
   final String? currentCardId;
   final String? currentFront;
   final String? currentBack;
+  final bool canUndoLastGrade;
+}
+
+class GradeUndoSnapshot {
+  const GradeUndoSnapshot({
+    required this.cardId,
+    required this.cardBefore,
+    required this.cardIds,
+    required this.gradedCardIds,
+    required this.didntKnowCounts,
+  });
+
+  final String cardId;
+  final Card cardBefore;
+  final List<String> cardIds;
+  final List<String> gradedCardIds;
+  final Map<String, int> didntKnowCounts;
 }
 
 class DayQueue {
@@ -72,23 +90,29 @@ class DayQueue {
     required this.cardIds,
     required this.gradedCardIds,
     this.didntKnowCounts = const {},
+    this.lastGradeUndo,
   });
 
   final DateTime date;
   final List<String> cardIds;
   final List<String> gradedCardIds;
   final Map<String, int> didntKnowCounts;
+  final GradeUndoSnapshot? lastGradeUndo;
 
   DayQueue copyWith({
     List<String>? cardIds,
     List<String>? gradedCardIds,
     Map<String, int>? didntKnowCounts,
+    GradeUndoSnapshot? lastGradeUndo,
+    bool clearLastGradeUndo = false,
   }) {
     return DayQueue(
       date: date,
       cardIds: cardIds ?? this.cardIds,
       gradedCardIds: gradedCardIds ?? this.gradedCardIds,
       didntKnowCounts: didntKnowCounts ?? this.didntKnowCounts,
+      lastGradeUndo:
+          clearLastGradeUndo ? null : (lastGradeUndo ?? this.lastGradeUndo),
     );
   }
 }

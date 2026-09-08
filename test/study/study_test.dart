@@ -173,6 +173,138 @@ void main() {
       expect(card.progress, CardProgress.learning);
     });
 
+    test('pause and resume same day keeps remaining ungraded Cards and Grades', () {
+      study.startOrResumeQueue();
+      final firstCardId = study.inspectToday().currentCardId!;
+      study.gradeKnew();
+      final secondCardId = study.inspectToday().currentCardId!;
+
+      final reopened = Study(store: store, clock: clock, random: Random(99));
+      final snapshot = reopened.inspectToday();
+
+      expect(snapshot.phase, TodayPhase.inProgress);
+      expect(snapshot.remainingUngradedCount, 9);
+      expect(snapshot.queuedCardIds.length, 10);
+      expect(snapshot.currentCardId, secondCardId);
+      expect(_findCard(reopened, firstCardId).progress, CardProgress.learning);
+      expect(_findCard(reopened, firstCardId).streak, 1);
+    });
+
+    test('undoLastGrade reverses Knew: Card returns to Queue and Streak restores', () {
+      final localStudy = studyFrom(_twoNewCards());
+
+      localStudy.startOrResumeQueue();
+      final cardId = localStudy.inspectToday().currentCardId!;
+      localStudy.gradeKnew();
+
+      expect(localStudy.inspectToday().canUndoLastGrade, isTrue);
+      localStudy.undoLastGrade();
+
+      final card = _findCard(localStudy, cardId);
+      expect(card.progress, CardProgress.cardNew);
+      expect(card.streak, 0);
+      expect(localStudy.inspectToday().currentCardId, cardId);
+      expect(localStudy.inspectToday().remainingUngradedCount, 2);
+      expect(localStudy.inspectToday().canUndoLastGrade, isFalse);
+    });
+
+    test('undoLastGrade reverses Didnt know: Queue place and Streak restore', () {
+      final localStudy = studyFrom(
+        StoreData(
+          lists: const [StudyList(id: 'list-1', name: '일상')],
+          cards: [
+            Card(
+              id: 'card-a',
+              listId: 'list-1',
+              front: 'hello',
+              back: '안녕',
+              progress: CardProgress.learning,
+              streak: 2,
+              lastKnewDate: DateTime(2026, 9, 7),
+            ),
+            Card(
+              id: 'card-b',
+              listId: 'list-1',
+              front: 'world',
+              back: '세계',
+              progress: CardProgress.cardNew,
+              streak: 0,
+            ),
+          ],
+        ),
+      );
+
+      localStudy.startOrResumeQueue();
+      final firstId = localStudy.inspectToday().currentCardId!;
+      localStudy.gradeDidntKnow();
+
+      expect(localStudy.inspectToday().currentCardId, isNot(firstId));
+      expect(localStudy.inspectToday().canUndoLastGrade, isTrue);
+
+      localStudy.undoLastGrade();
+
+      expect(localStudy.inspectToday().currentCardId, firstId);
+      expect(_findCard(localStudy, firstId).streak, 2);
+      expect(localStudy.inspectToday().canUndoLastGrade, isFalse);
+    });
+
+    test('after a later Grade, earlier Grade cannot be undone', () {
+      final localStudy = studyFrom(_twoNewCards());
+
+      localStudy.startOrResumeQueue();
+      final firstId = localStudy.inspectToday().currentCardId!;
+      localStudy.gradeKnew();
+      localStudy.gradeKnew();
+
+      expect(localStudy.inspectToday().canUndoLastGrade, isTrue);
+      localStudy.undoLastGrade();
+
+      expect(_findCard(localStudy, firstId).progress, CardProgress.learning);
+      expect(_findCard(localStudy, firstId).streak, 1);
+      expect(localStudy.inspectToday().canUndoLastGrade, isFalse);
+    });
+
+    test('undo survives pause and resume on the same date', () {
+      final memoryStore = MemoryStore()..write(_twoNewCards());
+      final localStudy = Study(
+        store: memoryStore,
+        clock: clock,
+        random: random,
+      );
+
+      localStudy.startOrResumeQueue();
+      final cardId = localStudy.inspectToday().currentCardId!;
+      localStudy.gradeKnew();
+
+      final reopened = Study(
+        store: memoryStore,
+        clock: clock,
+        random: random,
+      );
+      expect(reopened.inspectToday().canUndoLastGrade, isTrue);
+
+      reopened.undoLastGrade();
+      expect(_findCard(reopened, cardId).progress, CardProgress.cardNew);
+      expect(reopened.inspectToday().currentCardId, cardId);
+    });
+
+    test('undoLastGrade on day complete restores the last Card to the Queue', () {
+      final localStudy = studyFrom(_oneNewCard());
+
+      localStudy.startOrResumeQueue();
+      final cardId = localStudy.inspectToday().currentCardId!;
+      localStudy.gradeKnew();
+
+      expect(localStudy.inspectToday().phase, TodayPhase.dayComplete);
+      expect(localStudy.inspectToday().canUndoLastGrade, isTrue);
+
+      localStudy.undoLastGrade();
+
+      expect(localStudy.inspectToday().phase, TodayPhase.inProgress);
+      expect(localStudy.inspectToday().currentCardId, cardId);
+      expect(localStudy.inspectToday().remainingUngradedCount, 1);
+    });
+
     test("Day complete is reachable after Didn't know reinserts and the daily cap", () {
       final localStudy = studyFrom(_twoNewCards());
 
