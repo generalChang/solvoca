@@ -12,28 +12,26 @@ class SolvocaApp extends StatelessWidget {
   Widget build(BuildContext context) {
     const accent = Color(0xFF6B8CAE);
 
-    return AnimatedBuilder(
-      animation: controller,
-      builder: (context, _) {
-        return MaterialApp(
-          title: 'Solvoca',
-          theme: ThemeData(
-            colorScheme: ColorScheme.fromSeed(
-              seedColor: accent,
-              brightness: Brightness.light,
-            ),
-            useMaterial3: true,
-          ),
-          darkTheme: ThemeData(
-            colorScheme: ColorScheme.fromSeed(
-              seedColor: accent,
-              brightness: Brightness.dark,
-            ),
-            useMaterial3: true,
-          ),
-          home: _HomeShell(controller: controller),
-        );
-      },
+    return MaterialApp(
+      title: 'Solvoca',
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: accent,
+          brightness: Brightness.light,
+        ),
+        useMaterial3: true,
+      ),
+      darkTheme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: accent,
+          brightness: Brightness.dark,
+        ),
+        useMaterial3: true,
+      ),
+      home: AnimatedBuilder(
+        animation: controller,
+        builder: (context, _) => _HomeShell(controller: controller),
+      ),
     );
   }
 }
