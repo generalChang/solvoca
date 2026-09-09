@@ -755,6 +755,186 @@ void main() {
       expect(reopened.inspectToday().queuedCardIds, firstQueue);
     });
 
+    test('when every Card is Mastered Today is Cleared with no start action', () {
+      final localStudy = studyFrom(
+        StoreData(
+          lists: const [StudyList(id: 'list-1', name: '일상')],
+          cards: [
+            Card(
+              id: 'card-a',
+              listId: 'list-1',
+              front: 'hello',
+              back: '안녕',
+              progress: CardProgress.mastered,
+              streak: 3,
+              lastKnewDate: DateTime(2026, 9, 7),
+            ),
+            Card(
+              id: 'card-b',
+              listId: 'list-1',
+              front: 'world',
+              back: '세계',
+              progress: CardProgress.mastered,
+              streak: 3,
+              lastKnewDate: DateTime(2026, 9, 6),
+            ),
+          ],
+        ),
+      );
+
+      final today = localStudy.inspectToday();
+      expect(today.phase, TodayPhase.cleared);
+      expect(today.remainingUngradedCount, 0);
+      expect(today.queuedCardIds, isEmpty);
+
+      localStudy.startOrResumeQueue();
+      expect(localStudy.inspectToday().phase, TodayPhase.cleared);
+    });
+
+    test('Day complete is distinct from Cleared when New or Learning remain', () {
+      final memoryStore = MemoryStore()..write(_twoNewCards());
+      final localStudy = Study(
+        store: memoryStore,
+        clock: clock,
+        random: random,
+      );
+
+      localStudy.startOrResumeQueue();
+      localStudy.gradeKnew();
+      localStudy.gradeKnew();
+
+      final today = localStudy.inspectToday();
+      expect(today.phase, TodayPhase.dayComplete);
+      expect(today.remainingUngradedCount, 0);
+      expect(today.phase, isNot(TodayPhase.cleared));
+    });
+
+    test('returnMasteredToLearning does not insert into today Queue', () {
+      final memoryStore = MemoryStore()..write(
+        StoreData(
+          lists: const [StudyList(id: 'list-1', name: '일상')],
+          cards: [
+            Card(
+              id: 'card-a',
+              listId: 'list-1',
+              front: 'hello',
+              back: '안녕',
+              progress: CardProgress.mastered,
+              streak: 3,
+              lastKnewDate: DateTime(2026, 9, 7),
+            ),
+            Card(
+              id: 'card-b',
+              listId: 'list-1',
+              front: 'world',
+              back: '세계',
+              progress: CardProgress.cardNew,
+              streak: 0,
+            ),
+          ],
+        ),
+      );
+      final localStudy = Study(
+        store: memoryStore,
+        clock: clock,
+        random: random,
+      );
+
+      final queueBefore = localStudy.inspectToday().queuedCardIds;
+      expect(queueBefore, isNot(contains('card-a')));
+
+      localStudy.returnMasteredToLearning(cardId: 'card-a');
+
+      final card = _findCard(localStudy, 'card-a');
+      expect(card.progress, CardProgress.learning);
+      expect(card.streak, 0);
+      expect(card.lastKnewDate, isNull);
+
+      final today = localStudy.inspectToday();
+      expect(today.queuedCardIds, queueBefore);
+      expect(today.queuedCardIds, isNot(contains('card-a')));
+    });
+
+    test('returnMasteredToLearning on Day complete does not reopen today Queue', () {
+      final memoryStore = MemoryStore()..write(
+        StoreData(
+          lists: const [StudyList(id: 'list-1', name: '일상')],
+          cards: [
+            Card(
+              id: 'card-a',
+              listId: 'list-1',
+              front: 'hello',
+              back: '안녕',
+              progress: CardProgress.cardNew,
+              streak: 0,
+            ),
+            Card(
+              id: 'card-b',
+              listId: 'list-1',
+              front: 'world',
+              back: '세계',
+              progress: CardProgress.mastered,
+              streak: 3,
+              lastKnewDate: DateTime(2026, 9, 7),
+            ),
+          ],
+        ),
+      );
+      final localStudy = Study(
+        store: memoryStore,
+        clock: clock,
+        random: random,
+      );
+
+      localStudy.startOrResumeQueue();
+      localStudy.gradeKnew();
+      expect(localStudy.inspectToday().phase, TodayPhase.dayComplete);
+
+      localStudy.returnMasteredToLearning(cardId: 'card-b');
+
+      expect(localStudy.inspectToday().phase, TodayPhase.dayComplete);
+      expect(localStudy.inspectToday().queuedCardIds, isNot(contains('card-b')));
+    });
+
+    test('returned Mastered Card appears in Queue on the next local date', () {
+      final memoryStore = MemoryStore()..write(
+        StoreData(
+          lists: const [StudyList(id: 'list-1', name: '일상')],
+          cards: [
+            Card(
+              id: 'card-a',
+              listId: 'list-1',
+              front: 'hello',
+              back: '안녕',
+              progress: CardProgress.mastered,
+              streak: 3,
+              lastKnewDate: DateTime(2026, 9, 7),
+            ),
+          ],
+        ),
+      );
+
+      final clearedDay = Study(
+        store: memoryStore,
+        clock: FixedClock(DateTime(2026, 9, 8)),
+        random: Random(1),
+      );
+      expect(clearedDay.inspectToday().phase, TodayPhase.cleared);
+
+      clearedDay.returnMasteredToLearning(cardId: 'card-a');
+      expect(clearedDay.inspectToday().queuedCardIds, isEmpty);
+
+      final nextDay = Study(
+        store: memoryStore,
+        clock: FixedClock(DateTime(2026, 9, 9)),
+        random: Random(1),
+      );
+      final snapshot = nextDay.inspectToday();
+
+      expect(snapshot.phase, TodayPhase.waiting);
+      expect(snapshot.queuedCardIds, contains('card-a'));
+    });
+
     test('inspectToday reports Mastered count', () {
       final memoryStore = MemoryStore()..write(
         StoreData(

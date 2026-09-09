@@ -43,8 +43,20 @@ class Study {
 
   String get _todayKey => _today.dateKey;
 
+  bool _hasStudyableCards() {
+    return _data.cards.any(
+      (card) =>
+          card.progress == CardProgress.cardNew ||
+          card.progress == CardProgress.learning,
+    );
+  }
+
   void _ensureQueueForToday() {
     if (_data.queueByDate.containsKey(_todayKey)) {
+      return;
+    }
+
+    if (!_hasStudyableCards()) {
       return;
     }
 
@@ -135,10 +147,19 @@ class Study {
   DayQueue? get _todayQueue => _data.queueByDate[_todayKey];
 
   TodaySnapshot inspectToday() {
+    if (!_hasStudyableCards()) {
+      return TodaySnapshot(
+        phase: TodayPhase.cleared,
+        remainingUngradedCount: 0,
+        masteredCount: _masteredCount,
+        queuedCardIds: const [],
+      );
+    }
+
     final queue = _todayQueue;
     if (queue == null) {
       return TodaySnapshot(
-        phase: TodayPhase.cleared,
+        phase: TodayPhase.dayComplete,
         remainingUngradedCount: 0,
         masteredCount: _masteredCount,
         queuedCardIds: const [],
@@ -519,6 +540,30 @@ class Study {
       index++;
     }
     return 'list-$index';
+  }
+
+  void returnMasteredToLearning({required String cardId}) {
+    final card = _requireCard(cardId);
+    if (card.progress != CardProgress.mastered) {
+      throw ArgumentError.value(
+        cardId,
+        'cardId',
+        'Only Mastered Cards can be returned to Learning',
+      );
+    }
+
+    final updated = card.copyWith(
+      progress: CardProgress.learning,
+      streak: 0,
+      clearLastKnewDate: true,
+    );
+
+    _data = _data.copyWith(
+      cards: _data.cards
+          .map((existing) => existing.id == cardId ? updated : existing)
+          .toList(),
+    );
+    _persist();
   }
 
   void _removeCardFromTodayQueue(String cardId) {

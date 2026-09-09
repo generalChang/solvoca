@@ -195,13 +195,27 @@ class _DayCompleteView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
+          Icon(
+            Icons.nightlight_round,
+            size: 48,
+            color: theme.colorScheme.primary,
+          ),
+          const SizedBox(height: 16),
           Text(
             '오늘 학습을 마쳤어요.',
-            style: Theme.of(context).textTheme.titleLarge,
+            style: theme.textTheme.titleLarge,
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 12),
+          Text(
+            '내일 새 카드가 준비됩니다.',
+            style: theme.textTheme.bodyLarge,
             textAlign: TextAlign.center,
           ),
           if (canUndo) ...[
@@ -222,11 +236,30 @@ class _ClearedView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Center(
-      child: Text(
-        '학습할 카드가 없어요.',
-        style: Theme.of(context).textTheme.titleLarge,
-        textAlign: TextAlign.center,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.check_circle_outline,
+            size: 48,
+            color: theme.colorScheme.primary,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            '모든 카드를 암기했어요.',
+            style: theme.textTheme.titleLarge,
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 12),
+          Text(
+            '카드를 추가하거나 암기한 카드를 다시 학습 상태로 돌려보세요.',
+            style: theme.textTheme.bodyLarge,
+            textAlign: TextAlign.center,
+          ),
+        ],
       ),
     );
   }

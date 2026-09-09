@@ -85,6 +85,11 @@ class StudyController extends ChangeNotifier {
     _backRevealed = false;
     notifyListeners();
   }
+
+  void returnMasteredToLearning({required String cardId}) {
+    _study.returnMasteredToLearning(cardId: cardId);
+    notifyListeners();
+  }
 }
 
 StudyController createStudyController({required Store store}) {
