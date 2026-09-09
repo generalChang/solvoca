@@ -686,6 +686,75 @@ void main() {
       expect(localStudy.listLists().map((list) => list.id), ['list-1']);
     });
 
+    test('with 11+ Learning first fill is ten Learning and no New', () {
+      final localStudy = studyFrom(_storeWithLearningAndNew(learningCount: 12));
+
+      final today = localStudy.inspectToday();
+      expect(today.remainingUngradedCount, 10);
+
+      final queued = today.queuedCardIds.map((id) => _findCard(localStudy, id));
+      expect(queued.every((card) => card.progress == CardProgress.learning), isTrue);
+      expect(
+        queued.any((card) => card.progress == CardProgress.cardNew),
+        isFalse,
+      );
+    });
+
+    test('with 11+ Learning subset is deterministic under injected randomness', () {
+      final data = _storeWithLearningAndNew(learningCount: 15);
+      final first = Study(
+        store: MemoryStore()..write(data),
+        clock: clock,
+        random: Random(42),
+      );
+      final second = Study(
+        store: MemoryStore()..write(data),
+        clock: clock,
+        random: Random(42),
+      );
+      final third = Study(
+        store: MemoryStore()..write(data),
+        clock: clock,
+        random: Random(99),
+      );
+
+      expect(first.inspectToday().queuedCardIds, second.inspectToday().queuedCardIds);
+      expect(first.inspectToday().queuedCardIds, isNot(third.inspectToday().queuedCardIds));
+    });
+
+    test('with fewer than ten Learning first fill is Learning then New spread across Lists', () {
+      final localStudy = studyFrom(_storeWithMixedProgress());
+
+      final today = localStudy.inspectToday();
+      expect(today.remainingUngradedCount, 10);
+
+      final queued = today.queuedCardIds.map((id) => _findCard(localStudy, id));
+      final learningQueued = queued.where((card) => card.progress == CardProgress.learning);
+      final newQueued = queued.where((card) => card.progress == CardProgress.cardNew);
+
+      expect(learningQueued.length, 3);
+      expect(newQueued.length, 7);
+      expect(newQueued.map((card) => card.listId).toSet().length, greaterThan(1));
+    });
+
+    test('reopening same day keeps the same Learning subset', () {
+      final memoryStore = MemoryStore()..write(_storeWithLearningAndNew(learningCount: 12));
+      final first = Study(
+        store: memoryStore,
+        clock: clock,
+        random: Random(42),
+      );
+      final firstQueue = first.inspectToday().queuedCardIds;
+
+      final reopened = Study(
+        store: memoryStore,
+        clock: clock,
+        random: Random(99),
+      );
+
+      expect(reopened.inspectToday().queuedCardIds, firstQueue);
+    });
+
     test('inspectToday reports Mastered count', () {
       final memoryStore = MemoryStore()..write(
         StoreData(
@@ -721,6 +790,104 @@ void main() {
       expect(localStudy.inspectToday().masteredCount, 1);
     });
   });
+}
+
+StoreData _storeWithLearningAndNew({required int learningCount}) {
+  const lists = [
+    StudyList(id: 'list-1', name: '일상'),
+    StudyList(id: 'list-2', name: '사람'),
+  ];
+
+  final cards = <Card>[
+    for (var i = 0; i < learningCount; i++)
+      Card(
+        id: 'learning-$i',
+        listId: lists[i % lists.length].id,
+        front: 'learning-$i',
+        back: '학습-$i',
+        progress: CardProgress.learning,
+        streak: 1,
+        lastKnewDate: DateTime(2026, 9, 7),
+      ),
+    for (var i = 0; i < 8; i++)
+      Card(
+        id: 'new-$i',
+        listId: lists[i % lists.length].id,
+        front: 'new-$i',
+        back: '새-$i',
+        progress: CardProgress.cardNew,
+        streak: 0,
+      ),
+  ];
+
+  return StoreData(lists: lists, cards: cards);
+}
+
+StoreData _storeWithMixedProgress() {
+  const lists = [
+    StudyList(id: 'list-1', name: '일상'),
+    StudyList(id: 'list-2', name: '사람'),
+    StudyList(id: 'list-3', name: '일'),
+  ];
+
+  final cards = <Card>[
+    Card(
+      id: 'learning-1',
+      listId: 'list-1',
+      front: 'alpha',
+      back: '알파',
+      progress: CardProgress.learning,
+      streak: 1,
+      lastKnewDate: DateTime(2026, 9, 7),
+    ),
+    Card(
+      id: 'learning-2',
+      listId: 'list-2',
+      front: 'beta',
+      back: '베타',
+      progress: CardProgress.learning,
+      streak: 1,
+      lastKnewDate: DateTime(2026, 9, 7),
+    ),
+    Card(
+      id: 'learning-3',
+      listId: 'list-3',
+      front: 'gamma',
+      back: '감마',
+      progress: CardProgress.learning,
+      streak: 1,
+      lastKnewDate: DateTime(2026, 9, 7),
+    ),
+    for (var i = 0; i < 5; i++)
+      Card(
+        id: 'new-list1-$i',
+        listId: 'list-1',
+        front: 'new1-$i',
+        back: '새1-$i',
+        progress: CardProgress.cardNew,
+        streak: 0,
+      ),
+    for (var i = 0; i < 5; i++)
+      Card(
+        id: 'new-list2-$i',
+        listId: 'list-2',
+        front: 'new2-$i',
+        back: '새2-$i',
+        progress: CardProgress.cardNew,
+        streak: 0,
+      ),
+    for (var i = 0; i < 5; i++)
+      Card(
+        id: 'new-list3-$i',
+        listId: 'list-3',
+        front: 'new3-$i',
+        back: '새3-$i',
+        progress: CardProgress.cardNew,
+        streak: 0,
+      ),
+  ];
+
+  return StoreData(lists: lists, cards: cards);
 }
 
 StoreData _oneNewCard() {

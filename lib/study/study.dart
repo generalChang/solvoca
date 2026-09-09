@@ -28,7 +28,6 @@ class Study {
     if (stored == null || stored.isEmpty) {
       _data = buildSeedData();
       _ensureQueueForToday();
-      _persist();
       return;
     }
 
@@ -60,6 +59,7 @@ class Study {
         ),
       },
     );
+    _persist();
   }
 
   List<String> _buildFirstFillQueue() {
