@@ -613,6 +613,14 @@ class CardDetailScreen extends StatelessWidget {
                 icon: const Icon(Icons.drive_file_move_outline),
                 label: const Text('목록 이동'),
               ),
+              if (current.progress == CardProgress.mastered) ...[
+                const SizedBox(height: 12),
+                FilledButton.tonalIcon(
+                  onPressed: () => _confirmReturnToLearning(context, current),
+                  icon: const Icon(Icons.replay_outlined),
+                  label: const Text('학습으로 돌리기'),
+                ),
+              ],
               const SizedBox(height: 12),
               OutlinedButton.icon(
                 onPressed: () => _confirmDeleteCard(context, current),
@@ -670,6 +678,41 @@ class CardDetailScreen extends StatelessWidget {
         );
       },
     );
+  }
+
+  Future<void> _confirmReturnToLearning(BuildContext context, Card current) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('학습으로 돌리기'),
+          content: Text(
+            '\'${current.front}\' 카드를 다시 학습 상태로 돌릴까요? 오늘 큐에는 들어가지 않고 내일부터 다시 나옵니다.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('취소'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('돌리기'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed != true || !context.mounted) {
+      return;
+    }
+
+    controller.returnMasteredToLearning(cardId: current.id);
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('카드를 학습 상태로 돌렸어요.')),
+      );
+    }
   }
 
   Future<void> _confirmDeleteCard(BuildContext context, Card current) async {
