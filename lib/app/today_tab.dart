@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:solvoca/app/study_controller.dart';
 import 'package:solvoca/study/models.dart' show TodayPhase;
+import 'package:solvoca/ui/buttons.dart';
+import 'package:solvoca/ui/study_card_surface.dart';
+import 'package:solvoca/ui/tokens.dart';
 
 class TodayTab extends StatelessWidget {
   const TodayTab({super.key, required this.controller});
@@ -10,22 +13,32 @@ class TodayTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final today = controller.today;
-    final theme = Theme.of(context);
 
     return SafeArea(
       child: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(
+            const Text(
               'Solvoca',
-              style: theme.textTheme.headlineMedium,
+              style: TextStyle(
+                fontFamily: SolvocaTokens.fontFamily,
+                fontSize: 28,
+                fontWeight: FontWeight.w700,
+                height: 1.3,
+                color: SolvocaTokens.textPrimary,
+              ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
             Text(
               '암기 완료 ${today.masteredCount}장',
-              style: theme.textTheme.bodyMedium,
+              style: const TextStyle(
+                fontFamily: SolvocaTokens.fontFamily,
+                fontSize: 15,
+                fontWeight: FontWeight.w400,
+                color: SolvocaTokens.textSecondary,
+              ),
             ),
             const SizedBox(height: 24),
             Expanded(child: _buildBody(context)),
@@ -63,6 +76,47 @@ class TodayTab extends StatelessWidget {
   }
 }
 
+class _PhaseCopy extends StatelessWidget {
+  const _PhaseCopy({required this.title, required this.body, required this.icon});
+
+  final String title;
+  final String body;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(icon, size: 48, color: SolvocaTokens.accent),
+        const SizedBox(height: 20),
+        Text(
+          title,
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            fontFamily: SolvocaTokens.fontFamily,
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
+            color: SolvocaTokens.textPrimary,
+          ),
+        ),
+        const SizedBox(height: 12),
+        Text(
+          body,
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            fontFamily: SolvocaTokens.fontFamily,
+            fontSize: 16,
+            fontWeight: FontWeight.w400,
+            height: 1.45,
+            color: SolvocaTokens.textSecondary,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _WaitingView extends StatelessWidget {
   const _WaitingView({
     required this.remainingCount,
@@ -79,14 +133,16 @@ class _WaitingView extends StatelessWidget {
       children: [
         Text(
           '오늘 남은 카드 $remainingCount장',
-          style: Theme.of(context).textTheme.titleLarge,
           textAlign: TextAlign.center,
+          style: const TextStyle(
+            fontFamily: SolvocaTokens.fontFamily,
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
+            color: SolvocaTokens.textPrimary,
+          ),
         ),
-        const SizedBox(height: 24),
-        FilledButton(
-          onPressed: onStart,
-          child: const Text('시작'),
-        ),
+        const SizedBox(height: 28),
+        SolvocaPrimaryButton(label: '시작', onPressed: onStart),
       ],
     );
   }
@@ -118,67 +174,46 @@ class _QueuePlayer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Text(
           '남은 카드 $remainingCount장',
-          style: Theme.of(context).textTheme.bodyLarge,
-        ),
-        const SizedBox(height: 32),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(32),
-            child: Column(
-              children: [
-                Text(
-                  front,
-                  style: Theme.of(context).textTheme.headlineSmall,
-                  textAlign: TextAlign.center,
-                ),
-                if (backRevealed) ...[
-                  const SizedBox(height: 24),
-                  Text(
-                    back,
-                    style: Theme.of(context).textTheme.titleMedium,
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ],
-            ),
+          style: const TextStyle(
+            fontFamily: SolvocaTokens.fontFamily,
+            fontSize: 15,
+            fontWeight: FontWeight.w400,
+            color: SolvocaTokens.textSecondary,
           ),
         ),
-        const SizedBox(height: 32),
+        const Spacer(),
+        StudyCardSurface(front: front, back: back, revealed: backRevealed),
+        const SizedBox(height: 20),
         if (canUndo)
           Align(
             alignment: Alignment.centerRight,
-            child: TextButton(
-              onPressed: onUndo,
-              child: const Text('마지막 채점 취소'),
-            ),
+            child: SolvocaTextAction(label: '마지막 채점 취소', onPressed: onUndo),
           ),
         if (!backRevealed)
-          FilledButton(
+          SolvocaPrimaryButton(
+            label: '뒷면 보기',
             onPressed: onReveal,
-            child: const Text('뒷면 보기'),
+            expand: true,
           )
         else
           Row(
             children: [
               Expanded(
-                child: OutlinedButton(
+                child: SolvocaSecondaryButton(
+                  label: '몰랐다',
                   onPressed: onDidntKnow,
-                  child: const Text('몰랐다'),
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: FilledButton(
-                  onPressed: onKnew,
-                  child: const Text('알았다'),
-                ),
+                child: SolvocaPrimaryButton(label: '알았다', onPressed: onKnew),
               ),
             ],
           ),
+        const Spacer(),
       ],
     );
   }
@@ -195,35 +230,18 @@ class _DayCompleteView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.nightlight_round,
-            size: 48,
-            color: theme.colorScheme.primary,
-          ),
-          const SizedBox(height: 16),
-          Text(
-            '오늘 학습을 마쳤어요.',
-            style: theme.textTheme.titleLarge,
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 12),
-          Text(
-            '내일 새 카드가 준비됩니다.',
-            style: theme.textTheme.bodyLarge,
-            textAlign: TextAlign.center,
+          const _PhaseCopy(
+            icon: Icons.nightlight_outlined,
+            title: '오늘 학습을 마쳤어요.',
+            body: '내일 새 카드가 준비됩니다.',
           ),
           if (canUndo) ...[
             const SizedBox(height: 24),
-            TextButton(
-              onPressed: onUndo,
-              child: const Text('마지막 채점 취소'),
-            ),
+            SolvocaTextAction(label: '마지막 채점 취소', onPressed: onUndo),
           ],
         ],
       ),
@@ -236,30 +254,11 @@ class _ClearedView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.check_circle_outline,
-            size: 48,
-            color: theme.colorScheme.primary,
-          ),
-          const SizedBox(height: 16),
-          Text(
-            '모든 카드를 암기했어요.',
-            style: theme.textTheme.titleLarge,
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 12),
-          Text(
-            '카드를 추가하거나 암기한 카드를 다시 학습 상태로 돌려보세요.',
-            style: theme.textTheme.bodyLarge,
-            textAlign: TextAlign.center,
-          ),
-        ],
+    return const Center(
+      child: _PhaseCopy(
+        icon: Icons.check_circle_outline,
+        title: '모든 카드를 암기했어요.',
+        body: '카드를 추가하거나 암기한 카드를 다시 학습 상태로 돌려보세요.',
       ),
     );
   }
