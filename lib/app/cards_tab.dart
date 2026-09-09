@@ -68,50 +68,10 @@ class CardsTab extends StatelessWidget {
   }
 
   Future<void> _showCreateListDialog(BuildContext context) async {
-    final nameController = TextEditingController();
-
-    final created = await showDialog<bool>(
+    await showDialog<void>(
       context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('목록 추가'),
-          content: TextField(
-            controller: nameController,
-            decoration: const InputDecoration(
-              labelText: '목록 이름',
-              border: OutlineInputBorder(),
-            ),
-            autofocus: true,
-            textInputAction: TextInputAction.done,
-            onSubmitted: (_) => Navigator.of(context).pop(true),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('취소'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('추가'),
-            ),
-          ],
-        );
-      },
+      builder: (context) => _CreateListDialog(controller: controller),
     );
-
-    if (created != true || !context.mounted) {
-      nameController.dispose();
-      return;
-    }
-
-    final name = nameController.text.trim();
-    nameController.dispose();
-
-    if (name.isEmpty) {
-      return;
-    }
-
-    controller.createList(name: name);
   }
 
   Future<void> _showAddCardSheet(BuildContext context) async {
@@ -126,6 +86,136 @@ class CardsTab extends StatelessWidget {
           child: AddCardSheet(controller: controller),
         );
       },
+    );
+  }
+}
+
+class _CreateListDialog extends StatefulWidget {
+  const _CreateListDialog({required this.controller});
+
+  final StudyController controller;
+
+  @override
+  State<_CreateListDialog> createState() => _CreateListDialogState();
+}
+
+class _CreateListDialogState extends State<_CreateListDialog> {
+  late final TextEditingController _nameController;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    final name = _nameController.text.trim();
+    if (name.isEmpty) {
+      Navigator.of(context).pop();
+      return;
+    }
+
+    widget.controller.createList(name: name);
+    Navigator.of(context).pop();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('목록 추가'),
+      content: TextField(
+        controller: _nameController,
+        decoration: const InputDecoration(
+          labelText: '목록 이름',
+          border: OutlineInputBorder(),
+        ),
+        autofocus: true,
+        textInputAction: TextInputAction.done,
+        onSubmitted: (_) => _submit(),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('취소'),
+        ),
+        FilledButton(
+          onPressed: _submit,
+          child: const Text('추가'),
+        ),
+      ],
+    );
+  }
+}
+
+class _RenameListDialog extends StatefulWidget {
+  const _RenameListDialog({
+    required this.controller,
+    required this.list,
+  });
+
+  final StudyController controller;
+  final StudyList list;
+
+  @override
+  State<_RenameListDialog> createState() => _RenameListDialogState();
+}
+
+class _RenameListDialogState extends State<_RenameListDialog> {
+  late final TextEditingController _nameController;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController = TextEditingController(text: widget.list.name);
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    final name = _nameController.text.trim();
+    if (name.isEmpty) {
+      Navigator.of(context).pop();
+      return;
+    }
+
+    widget.controller.renameList(listId: widget.list.id, name: name);
+    Navigator.of(context).pop();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('목록 이름 바꾸기'),
+      content: TextField(
+        controller: _nameController,
+        decoration: const InputDecoration(
+          labelText: '목록 이름',
+          border: OutlineInputBorder(),
+        ),
+        autofocus: true,
+        textInputAction: TextInputAction.done,
+        onSubmitted: (_) => _submit(),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('취소'),
+        ),
+        FilledButton(
+          onPressed: _submit,
+          child: const Text('저장'),
+        ),
+      ],
     );
   }
 }
@@ -331,50 +421,13 @@ class ListDetailScreen extends StatelessWidget {
     BuildContext context,
     StudyList currentList,
   ) async {
-    final nameController = TextEditingController(text: currentList.name);
-
-    final confirmed = await showDialog<bool>(
+    await showDialog<void>(
       context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('목록 이름 바꾸기'),
-          content: TextField(
-            controller: nameController,
-            decoration: const InputDecoration(
-              labelText: '목록 이름',
-              border: OutlineInputBorder(),
-            ),
-            autofocus: true,
-            textInputAction: TextInputAction.done,
-            onSubmitted: (_) => Navigator.of(context).pop(true),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('취소'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('저장'),
-            ),
-          ],
-        );
-      },
+      builder: (context) => _RenameListDialog(
+        controller: controller,
+        list: currentList,
+      ),
     );
-
-    if (confirmed != true || !context.mounted) {
-      nameController.dispose();
-      return;
-    }
-
-    final name = nameController.text.trim();
-    nameController.dispose();
-
-    if (name.isEmpty) {
-      return;
-    }
-
-    controller.renameList(listId: currentList.id, name: name);
   }
 
   Future<void> _confirmDeleteList(
@@ -526,7 +579,10 @@ class CardDetailScreen extends StatelessWidget {
     return AnimatedBuilder(
       animation: controller,
       builder: (context, _) {
-        final current = _findCard(controller, card.id);
+        final current = _tryFindCard(controller, card.id);
+        if (current == null) {
+          return const Scaffold(body: SizedBox.shrink());
+        }
 
         return Scaffold(
           appBar: AppBar(title: Text(current.front)),
@@ -641,8 +697,9 @@ class CardDetailScreen extends StatelessWidget {
       return;
     }
 
-    controller.deleteCard(cardId: current.id);
+    final cardId = current.id;
     Navigator.of(context).pop();
+    controller.deleteCard(cardId: cardId);
   }
 
   String _progressLabel(CardProgress progress) {
@@ -654,7 +711,7 @@ class CardDetailScreen extends StatelessWidget {
   }
 }
 
-Card _findCard(StudyController controller, String cardId) {
+Card? _tryFindCard(StudyController controller, String cardId) {
   for (final list in controller.listLists()) {
     for (final card in controller.listCards(list.id)) {
       if (card.id == cardId) {
@@ -662,5 +719,5 @@ Card _findCard(StudyController controller, String cardId) {
       }
     }
   }
-  throw StateError('Card not found: $cardId');
+  return null;
 }
