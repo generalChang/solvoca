@@ -426,6 +426,91 @@ class ListDetailScreen extends StatelessWidget {
   }
 }
 
+class EditBackSheet extends StatefulWidget {
+  const EditBackSheet({
+    super.key,
+    required this.controller,
+    required this.card,
+  });
+
+  final StudyController controller;
+  final Card card;
+
+  @override
+  State<EditBackSheet> createState() => _EditBackSheetState();
+}
+
+class _EditBackSheetState extends State<EditBackSheet> {
+  late final TextEditingController _backController;
+
+  @override
+  void initState() {
+    super.initState();
+    _backController = TextEditingController(text: widget.card.back);
+  }
+
+  @override
+  void dispose() {
+    _backController.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    final back = _backController.text.trim();
+    if (back.isEmpty) {
+      Navigator.of(context).pop();
+      return;
+    }
+
+    try {
+      widget.controller.editCard(cardId: widget.card.id, back: back);
+      Navigator.of(context).pop();
+    } on DuplicateCardPairException {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('같은 앞면과 뒷면을 가진 카드가 이미 있어요.')),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(
+        left: 24,
+        right: 24,
+        top: 24,
+        bottom: MediaQuery.viewInsetsOf(context).bottom + 32,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            '뒷면 수정',
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _backController,
+            decoration: const InputDecoration(
+              labelText: '뒷면 (한국어)',
+              border: OutlineInputBorder(),
+            ),
+            autofocus: true,
+            textInputAction: TextInputAction.done,
+            onSubmitted: (_) => _submit(),
+          ),
+          const SizedBox(height: 20),
+          FilledButton(
+            onPressed: _submit,
+            child: const Text('저장'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class CardDetailScreen extends StatelessWidget {
   const CardDetailScreen({
     super.key,
@@ -486,68 +571,13 @@ class CardDetailScreen extends StatelessWidget {
   }
 
   Future<void> _showEditBackSheet(BuildContext context, Card current) async {
-    final backController = TextEditingController(text: current.back);
-
-    final confirmed = await showModalBottomSheet<bool>(
+    await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       builder: (context) {
-        return Padding(
-          padding: EdgeInsets.only(
-            left: 24,
-            right: 24,
-            top: 24,
-            bottom: MediaQuery.viewInsetsOf(context).bottom + 32,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                '뒷면 수정',
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: backController,
-                decoration: const InputDecoration(
-                  labelText: '뒷면 (한국어)',
-                  border: OutlineInputBorder(),
-                ),
-                autofocus: true,
-                textInputAction: TextInputAction.done,
-                onSubmitted: (_) => Navigator.of(context).pop(true),
-              ),
-              const SizedBox(height: 20),
-              FilledButton(
-                onPressed: () => Navigator.of(context).pop(true),
-                child: const Text('저장'),
-              ),
-            ],
-          ),
-        );
+        return EditBackSheet(controller: controller, card: current);
       },
     );
-
-    if (confirmed != true || !context.mounted) {
-      backController.dispose();
-      return;
-    }
-
-    final back = backController.text.trim();
-    backController.dispose();
-
-    if (back.isEmpty) {
-      return;
-    }
-
-    try {
-      controller.editCard(cardId: current.id, back: back);
-    } on DuplicateCardPairException {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('같은 앞면과 뒷면을 가진 카드가 이미 있어요.')),
-      );
-    }
   }
 
   Future<void> _showMoveSheet(BuildContext context, Card current) async {
