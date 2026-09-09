@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart' hide Card;
 import 'package:solvoca/app/study_controller.dart';
 import 'package:solvoca/study/models.dart';
+import 'package:solvoca/ui/buttons.dart';
+import 'package:solvoca/ui/fab.dart';
+import 'package:solvoca/ui/list_row.dart';
+import 'package:solvoca/ui/sheet.dart';
+import 'package:solvoca/ui/tokens.dart';
 
 class CardsTab extends StatelessWidget {
   const CardsTab({super.key, required this.controller});
@@ -14,52 +19,55 @@ class CardsTab extends StatelessWidget {
     return SafeArea(
       child: Stack(
         children: [
-          ListView.separated(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 88),
-            itemCount: lists.length,
-            separatorBuilder: (context, index) => const Divider(height: 1),
-            itemBuilder: (context, index) {
-              final list = lists[index];
-              final cards = controller.listCards(list.id);
-
-              return ListTile(
-                title: Text(list.name),
-                subtitle: Text('${cards.length}장'),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => ListDetailScreen(
-                        controller: controller,
-                        list: list,
-                      ),
+          Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
+                child: Row(
+                  children: [
+                    const Spacer(),
+                    SolvocaTextAction(
+                      label: '목록 추가',
+                      tooltip: '목록 추가',
+                      icon: Icons.create_new_folder_outlined,
+                      onPressed: () => _showCreateListDialog(context),
                     ),
-                  );
-                },
-              );
-            },
+                  ],
+                ),
+              ),
+              Expanded(
+                child: ListView.builder(
+                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 96),
+                  itemCount: lists.length,
+                  itemBuilder: (context, index) {
+                    final list = lists[index];
+                    final cards = controller.listCards(list.id);
+
+                    return SolvocaListRow(
+                      title: list.name,
+                      subtitle: '${cards.length}장',
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => ListDetailScreen(
+                              controller: controller,
+                              list: list,
+                            ),
+                          ),
+                        );
+                      },
+                    );
+                  },
+                ),
+              ),
+            ],
           ),
           Positioned(
-            right: 16,
+            right: 20,
             bottom: 16,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                FloatingActionButton(
-                  heroTag: 'add-list',
-                  onPressed: () => _showCreateListDialog(context),
-                  tooltip: '목록 추가',
-                  child: const Icon(Icons.create_new_folder_outlined),
-                ),
-                const SizedBox(height: 12),
-                FloatingActionButton.extended(
-                  heroTag: 'add-card',
-                  onPressed: () => _showAddCardSheet(context),
-                  icon: const Icon(Icons.add),
-                  label: const Text('카드 추가'),
-                ),
-              ],
+            child: SolvocaFab(
+              label: '카드 추가',
+              onPressed: () => _showAddCardSheet(context),
             ),
           ),
         ],
@@ -75,17 +83,9 @@ class CardsTab extends StatelessWidget {
   }
 
   Future<void> _showAddCardSheet(BuildContext context) async {
-    await showModalBottomSheet<void>(
+    await showSolvocaSheet<void>(
       context: context,
-      isScrollControlled: true,
-      builder: (context) {
-        return Padding(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.viewInsetsOf(context).bottom,
-          ),
-          child: AddCardSheet(controller: controller),
-        );
-      },
+      builder: (context) => AddCardSheet(controller: controller),
     );
   }
 }
@@ -133,20 +133,20 @@ class _CreateListDialogState extends State<_CreateListDialog> {
         controller: _nameController,
         decoration: const InputDecoration(
           labelText: '목록 이름',
-          border: OutlineInputBorder(),
         ),
         autofocus: true,
         textInputAction: TextInputAction.done,
         onSubmitted: (_) => _submit(),
       ),
       actions: [
-        TextButton(
+        SolvocaTextAction(
+          label: '취소',
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('취소'),
         ),
-        FilledButton(
+        SolvocaPrimaryButton(
+          label: '추가',
           onPressed: _submit,
-          child: const Text('추가'),
+          compact: true,
         ),
       ],
     );
@@ -200,20 +200,20 @@ class _RenameListDialogState extends State<_RenameListDialog> {
         controller: _nameController,
         decoration: const InputDecoration(
           labelText: '목록 이름',
-          border: OutlineInputBorder(),
         ),
         autofocus: true,
         textInputAction: TextInputAction.done,
         onSubmitted: (_) => _submit(),
       ),
       actions: [
-        TextButton(
+        SolvocaTextAction(
+          label: '취소',
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('취소'),
         ),
-        FilledButton(
+        SolvocaPrimaryButton(
+          label: '저장',
           onPressed: _submit,
-          child: const Text('저장'),
+          compact: true,
         ),
       ],
     );
@@ -272,22 +272,16 @@ class _AddCardSheetState extends State<AddCardSheet> {
   Widget build(BuildContext context) {
     final lists = widget.controller.listLists();
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
+    return SolvocaSheetBody(
+      title: '카드 추가',
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            '카드 추가',
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
-          const SizedBox(height: 16),
           DropdownButtonFormField<String>(
             initialValue: _selectedListId,
             decoration: const InputDecoration(
               labelText: '목록',
-              border: OutlineInputBorder(),
             ),
             items: [
               for (final list in lists)
@@ -303,7 +297,6 @@ class _AddCardSheetState extends State<AddCardSheet> {
             controller: _frontController,
             decoration: const InputDecoration(
               labelText: '앞면 (영어)',
-              border: OutlineInputBorder(),
             ),
             textInputAction: TextInputAction.next,
           ),
@@ -312,15 +305,15 @@ class _AddCardSheetState extends State<AddCardSheet> {
             controller: _backController,
             decoration: const InputDecoration(
               labelText: '뒷면 (한국어)',
-              border: OutlineInputBorder(),
             ),
             textInputAction: TextInputAction.done,
             onSubmitted: (_) => _submit(),
           ),
           const SizedBox(height: 20),
-          FilledButton(
+          SolvocaPrimaryButton(
+            label: '추가',
             onPressed: _submit,
-            child: const Text('추가'),
+            expand: true,
           ),
         ],
       ),
@@ -351,33 +344,32 @@ class ListDetailScreen extends StatelessWidget {
             controller.listLists().length > 1 && cards.isEmpty;
 
         return Scaffold(
+          backgroundColor: SolvocaTokens.background,
           appBar: AppBar(
             title: Text(currentList.name),
             actions: [
-              IconButton(
+              SolvocaIconButton(
                 tooltip: '목록 이름 바꾸기',
                 onPressed: () => _showRenameListDialog(context, currentList),
-                icon: const Icon(Icons.edit_outlined),
+                icon: Icons.edit_outlined,
               ),
               if (canDeleteList)
-                IconButton(
+                SolvocaIconButton(
                   tooltip: '목록 삭제',
                   onPressed: () => _confirmDeleteList(context, currentList),
-                  icon: const Icon(Icons.delete_outline),
+                  icon: Icons.delete_outline,
                 ),
             ],
           ),
-          body: ListView.separated(
-            padding: const EdgeInsets.all(16),
+          body: ListView.builder(
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 96),
             itemCount: cards.length,
-            separatorBuilder: (context, index) => const Divider(height: 1),
             itemBuilder: (context, index) {
               final card = cards[index];
 
-              return ListTile(
-                title: Text(card.front),
-                subtitle: Text('${card.back} · ${_progressLabel(card.progress)}'),
-                trailing: const Icon(Icons.chevron_right),
+              return SolvocaListRow(
+                title: card.front,
+                subtitle: '${card.back} · ${_progressLabel(card.progress)}',
                 onTap: () {
                   Navigator.of(context).push(
                     MaterialPageRoute<void>(
@@ -391,26 +383,17 @@ class ListDetailScreen extends StatelessWidget {
               );
             },
           ),
-          floatingActionButton: FloatingActionButton.extended(
+          floatingActionButton: SolvocaFab(
+            label: '카드 추가',
             onPressed: () async {
-              await showModalBottomSheet<void>(
+              await showSolvocaSheet<void>(
                 context: context,
-                isScrollControlled: true,
-                builder: (context) {
-                  return Padding(
-                    padding: EdgeInsets.only(
-                      bottom: MediaQuery.viewInsetsOf(context).bottom,
-                    ),
-                    child: AddCardSheet(
-                      controller: controller,
-                      initialListId: currentList.id,
-                    ),
-                  );
-                },
+                builder: (context) => AddCardSheet(
+                  controller: controller,
+                  initialListId: currentList.id,
+                ),
               );
             },
-            icon: const Icon(Icons.add),
-            label: const Text('카드 추가'),
           ),
         );
       },
@@ -441,13 +424,14 @@ class ListDetailScreen extends StatelessWidget {
           title: const Text('목록 삭제'),
           content: Text('\'${currentList.name}\' 목록을 삭제할까요?'),
           actions: [
-            TextButton(
+            SolvocaTextAction(
+              label: '취소',
               onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('취소'),
             ),
-            FilledButton(
+            SolvocaPrimaryButton(
+              label: '삭제',
               onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('삭제'),
+              compact: true,
             ),
           ],
         );
@@ -527,36 +511,26 @@ class _EditBackSheetState extends State<EditBackSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(
-        left: 24,
-        right: 24,
-        top: 24,
-        bottom: MediaQuery.viewInsetsOf(context).bottom + 32,
-      ),
+    return SolvocaSheetBody(
+      title: '뒷면 수정',
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            '뒷면 수정',
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
-          const SizedBox(height: 16),
           TextField(
             controller: _backController,
             decoration: const InputDecoration(
               labelText: '뒷면 (한국어)',
-              border: OutlineInputBorder(),
             ),
             autofocus: true,
             textInputAction: TextInputAction.done,
             onSubmitted: (_) => _submit(),
           ),
           const SizedBox(height: 20),
-          FilledButton(
+          SolvocaPrimaryButton(
+            label: '저장',
             onPressed: _submit,
-            child: const Text('저장'),
+            expand: true,
           ),
         ],
       ),
@@ -585,47 +559,88 @@ class CardDetailScreen extends StatelessWidget {
         }
 
         return Scaffold(
+          backgroundColor: SolvocaTokens.background,
           appBar: AppBar(title: Text(current.front)),
           body: ListView(
             padding: const EdgeInsets.all(24),
             children: [
-              Text('앞면', style: Theme.of(context).textTheme.labelLarge),
+              const Text(
+                '앞면',
+                style: TextStyle(
+                  fontFamily: SolvocaTokens.fontFamily,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: SolvocaTokens.textSecondary,
+                ),
+              ),
               const SizedBox(height: 8),
-              Text(current.front, style: Theme.of(context).textTheme.titleLarge),
+              Text(
+                current.front,
+                style: const TextStyle(
+                  fontFamily: SolvocaTokens.fontFamily,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w700,
+                  color: SolvocaTokens.textPrimary,
+                ),
+              ),
               const SizedBox(height: 24),
-              Text('뒷면', style: Theme.of(context).textTheme.labelLarge),
+              const Text(
+                '뒷면',
+                style: TextStyle(
+                  fontFamily: SolvocaTokens.fontFamily,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: SolvocaTokens.textSecondary,
+                ),
+              ),
               const SizedBox(height: 8),
-              Text(current.back, style: Theme.of(context).textTheme.titleLarge),
+              Text(
+                current.back,
+                style: const TextStyle(
+                  fontFamily: SolvocaTokens.fontFamily,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w600,
+                  color: SolvocaTokens.textPrimary,
+                ),
+              ),
               const SizedBox(height: 24),
               Text(
                 _progressLabel(current.progress),
-                style: Theme.of(context).textTheme.bodyLarge,
+                style: const TextStyle(
+                  fontFamily: SolvocaTokens.fontFamily,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w400,
+                  color: SolvocaTokens.textSecondary,
+                ),
               ),
               const SizedBox(height: 32),
-              FilledButton.tonalIcon(
+              SolvocaPrimaryButton(
+                label: '뒷면 수정',
                 onPressed: () => _showEditBackSheet(context, current),
-                icon: const Icon(Icons.edit_outlined),
-                label: const Text('뒷면 수정'),
+                expand: true,
               ),
               const SizedBox(height: 12),
-              FilledButton.tonalIcon(
+              SolvocaSecondaryButton(
+                label: '목록 이동',
+                icon: Icons.drive_file_move_outline,
                 onPressed: () => _showMoveSheet(context, current),
-                icon: const Icon(Icons.drive_file_move_outline),
-                label: const Text('목록 이동'),
+                expand: true,
               ),
               if (current.progress == CardProgress.mastered) ...[
                 const SizedBox(height: 12),
-                FilledButton.tonalIcon(
+                SolvocaSecondaryButton(
+                  label: '학습으로 돌리기',
+                  icon: Icons.replay_outlined,
                   onPressed: () => _confirmReturnToLearning(context, current),
-                  icon: const Icon(Icons.replay_outlined),
-                  label: const Text('학습으로 돌리기'),
+                  expand: true,
                 ),
               ],
               const SizedBox(height: 12),
-              OutlinedButton.icon(
+              SolvocaSecondaryButton(
+                label: '카드 삭제',
+                icon: Icons.delete_outline,
                 onPressed: () => _confirmDeleteCard(context, current),
-                icon: const Icon(Icons.delete_outline),
-                label: const Text('카드 삭제'),
+                expand: true,
               ),
             ],
           ),
@@ -635,12 +650,9 @@ class CardDetailScreen extends StatelessWidget {
   }
 
   Future<void> _showEditBackSheet(BuildContext context, Card current) async {
-    await showModalBottomSheet<void>(
+    await showSolvocaSheet<void>(
       context: context,
-      isScrollControlled: true,
-      builder: (context) {
-        return EditBackSheet(controller: controller, card: current);
-      },
+      builder: (context) => EditBackSheet(controller: controller, card: current),
     );
   }
 
@@ -650,24 +662,18 @@ class CardDetailScreen extends StatelessWidget {
       return;
     }
 
-    await showModalBottomSheet<void>(
+    await showSolvocaSheet<void>(
       context: context,
       builder: (context) {
-        return SafeArea(
+        return SolvocaSheetBody(
+          title: '목록 이동',
           child: Column(
             mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
-                child: Text(
-                  '목록 이동',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-              ),
               for (final list in lists)
-                ListTile(
-                  title: Text(list.name),
+                SolvocaListRow(
+                  title: list.name,
+                  subtitle: '${controller.listCards(list.id).length}장',
                   onTap: () {
                     controller.moveCard(cardId: current.id, listId: list.id);
                     Navigator.of(context).pop();
@@ -690,13 +696,14 @@ class CardDetailScreen extends StatelessWidget {
             '\'${current.front}\' 카드를 다시 학습 상태로 돌릴까요? 오늘 큐에는 들어가지 않고 내일부터 다시 나옵니다.',
           ),
           actions: [
-            TextButton(
+            SolvocaTextAction(
+              label: '취소',
               onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('취소'),
             ),
-            FilledButton(
+            SolvocaPrimaryButton(
+              label: '돌리기',
               onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('돌리기'),
+              compact: true,
             ),
           ],
         );
@@ -723,13 +730,14 @@ class CardDetailScreen extends StatelessWidget {
           title: const Text('카드 삭제'),
           content: Text('\'${current.front}\' 카드를 삭제할까요?'),
           actions: [
-            TextButton(
+            SolvocaTextAction(
+              label: '취소',
               onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('취소'),
             ),
-            FilledButton(
+            SolvocaPrimaryButton(
+              label: '삭제',
               onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('삭제'),
+              compact: true,
             ),
           ],
         );
